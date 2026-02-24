@@ -1,0 +1,22 @@
+import { useState } from 'react';
+import { Layout } from './components/Layout';
+import { Dashboard } from './components/Dashboard';
+import { Analytics } from './components/Analytics';
+import { Settings } from './components/Settings';
+import { Placeholder } from './components/Placeholder';
+import { BasicOverview } from './components/BasicOverview';
+
+export default function App() {
+  const [currentView, setCurrentView] = useState('dashboard');
+
+  return (
+    <Layout currentView={currentView} onViewChange={setCurrentView}>
+      {currentView === 'dashboard' && <Dashboard />}
+      {currentView === 'basic_overview' && <BasicOverview />}
+      {currentView === 'analytics' && <Analytics />}
+      {currentView === 'ltv' && <Placeholder title="LTV查询" />}
+      {currentView === 'retention' && <Placeholder title="账户留存" />}
+      {currentView === 'settings' && <Settings />}
+    </Layout>
+  );
+}
