@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { Search, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchBasicStats, type BasicStatsItem } from '../lib/api';
 import { cn } from '../lib/utils';
+import Datepicker from "react-tailwindcss-datepicker";
+import dayjs from 'dayjs';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+
+dayjs.extend(localizedFormat);
 
 interface DetailedStatsItem extends BasicStatsItem {
   server: string;
@@ -24,8 +29,8 @@ export function Analytics() {
   
   // Filters
   const [dateRange, setDateRange] = useState({
-    start: format(subDays(new Date(), 6), 'yyyy-MM-dd'),
-    end: format(new Date(), 'yyyy-MM-dd')
+    startDate: subDays(new Date(), 6),
+    endDate: new Date()
   });
   const [server, setServer] = useState('全部');
   const [channel, setChannel] = useState('全部');
@@ -48,13 +53,24 @@ export function Analytics() {
     
     if (type === 'yesterday') {
       start = subDays(end, 1);
-      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(start, 'yyyy-MM-dd') });
+      setDateRange({ startDate: start, endDate: start });
     } else if (type === '7days') {
       start = subDays(end, 6);
-      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') });
+      setDateRange({ startDate: start, endDate: end });
     } else if (type === '30days') {
       start = subDays(end, 29);
-      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') });
+      setDateRange({ startDate: start, endDate: end });
+    }
+  };
+
+  const formatRangeDate = (date: any) => {
+    if (!date) return '';
+    try {
+      if (date instanceof Date) return format(date, 'yyyy-MM-dd');
+      if (typeof date === 'string') return date;
+      return format(new Date(date), 'yyyy-MM-dd');
+    } catch (e) {
+      return '';
     }
   };
 
@@ -62,8 +78,8 @@ export function Analytics() {
     setLoading(true);
     try {
       const data = await fetchBasicStats({
-        startDate: dateRange.start,
-        endDate: dateRange.end
+        startDate: formatRangeDate(dateRange.startDate),
+        endDate: formatRangeDate(dateRange.endDate)
       });
 
       if (data) {
@@ -119,7 +135,7 @@ export function Analytics() {
   return (
     <div className="space-y-6">
       {/* Header / Filter */}
-      <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col gap-4">
+      <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col gap-4 overflow-visible">
         <div className="flex flex-wrap items-center gap-6 justify-between">
           <div className="flex flex-wrap items-center gap-4">
             {/* Quick Ranges */}
@@ -128,7 +144,9 @@ export function Analytics() {
                 onClick={() => setRangeType('yesterday')}
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-                  dateRange.start === dateRange.end && dateRange.end === format(subDays(new Date(), 1), 'yyyy-MM-dd')
+                  dateRange.startDate && dateRange.endDate && 
+                  formatRangeDate(dateRange.startDate) === formatRangeDate(dateRange.endDate) && 
+                  formatRangeDate(dateRange.endDate) === format(subDays(new Date(), 1), 'yyyy-MM-dd')
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-neutral-500 hover:text-neutral-700"
                 )}
@@ -139,7 +157,9 @@ export function Analytics() {
                 onClick={() => setRangeType('7days')}
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-                  dateRange.start === format(subDays(new Date(), 6), 'yyyy-MM-dd') && dateRange.end === format(new Date(), 'yyyy-MM-dd')
+                  dateRange.startDate && dateRange.endDate && 
+                  formatRangeDate(dateRange.startDate) === format(subDays(new Date(), 6), 'yyyy-MM-dd') && 
+                  formatRangeDate(dateRange.endDate) === format(new Date(), 'yyyy-MM-dd')
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-neutral-500 hover:text-neutral-700"
                 )}
@@ -150,7 +170,9 @@ export function Analytics() {
                 onClick={() => setRangeType('30days')}
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-                  dateRange.start === format(subDays(new Date(), 29), 'yyyy-MM-dd') && dateRange.end === format(new Date(), 'yyyy-MM-dd')
+                  dateRange.startDate && dateRange.endDate && 
+                  formatRangeDate(dateRange.startDate) === format(subDays(new Date(), 29), 'yyyy-MM-dd') && 
+                  formatRangeDate(dateRange.endDate) === format(new Date(), 'yyyy-MM-dd')
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-neutral-500 hover:text-neutral-700"
                 )}
@@ -160,23 +182,24 @@ export function Analytics() {
             </div>
 
             {/* Custom Range Display */}
-            <div className="flex items-center gap-2 bg-neutral-50 px-3 py-1.5 rounded-lg border border-neutral-200 shadow-inner">
-              <Calendar size={14} className="text-neutral-400" />
-              <div className="flex items-center gap-1">
-                <input 
-                  type="date" 
-                  value={dateRange.start}
-                  onChange={e => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  className="text-xs border-none p-0 focus:ring-0 text-neutral-800 font-semibold bg-transparent w-28 cursor-pointer"
-                />
-                <span className="text-neutral-300 text-xs mx-1">至</span>
-                <input 
-                  type="date" 
-                  value={dateRange.end}
-                  onChange={e => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  className="text-xs border-none p-0 focus:ring-0 text-neutral-800 font-semibold bg-transparent w-28 cursor-pointer"
-                />
-              </div>
+            <div className="w-80 relative">
+              <Datepicker 
+                inputId="analytics-datepicker-input"
+                value={dateRange as any} 
+                onChange={(newValue: any) => setDateRange(newValue)}
+                showShortcuts={true}
+                useRange={true}
+                asSingle={false}
+                separator="至"
+                displayFormat="YYYY-MM-DD"
+                i18n="zh"
+                primaryColor="indigo"
+                popoverDirection="down"
+                readOnly={true}
+                containerClassName="relative w-full z-[100]"
+                toggleClassName="absolute right-0 top-0 h-full px-3 text-neutral-400 focus:outline-none"
+                inputClassName="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-neutral-800 shadow-sm pr-10 cursor-pointer"
+              />
             </div>
           </div>
 
