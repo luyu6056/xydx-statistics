@@ -31,9 +31,32 @@ interface ExternalStatsResponse {
 const API_BASE_URL = process.env.API_URI || 'https://statistics.xydx.net/';
 
 export async function fetchMeta(): Promise<MetaData> {
-  // The external API doesn't seem to provide metadata endpoints based on the description.
-  // Returning empty or mock data for now to prevent breaking the UI filters.
-  return { channels: [], servers: [] };
+  try {
+    const channelsList = await get_channel_list();
+    // Extract unique groups and filter out empty ones
+    const uniqueGroups = Array.from(new Set(
+      channelsList
+        .map(c => c.group)
+        .filter(g => g && g.trim() !== '')
+    )).sort();
+    
+    return { 
+      channels: ['全部', ...uniqueGroups], 
+      servers: [] 
+    };
+  } catch (error) {
+    console.error('Failed to fetch metadata:', error);
+    return { channels: ['全部'], servers: [] };
+  }
+}
+
+export interface StatsResponse {
+  stats: DailyStats[];
+  summary?: {
+    new_users: number;
+    total_revenue: number;
+    avg_dau: number;
+  };
 }
 
 export async function fetchStats(params: {
@@ -41,9 +64,16 @@ export async function fetchStats(params: {
   endDate?: string;
   channels?: string[];
   servers?: string[];
-}): Promise<DailyStats[]> {
+}): Promise<StatsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}statistics/total_stats`);
+    const query = new URLSearchParams();
+    if (params.startDate) query.append('begin_date', params.startDate);
+    if (params.endDate) query.append('end_date', params.endDate);
+    if (params.channels && params.channels.length > 0 && params.channels[0] !== '全部') {
+      query.append('group', params.channels[0]);
+    }
+    
+    const response = await fetch(`${API_BASE_URL}statistics/total_stats?${query.toString()}`);
     if (!response.ok) {
       throw new Error(`API request failed with status ${response.status}`);
     }
@@ -52,10 +82,10 @@ export async function fetchStats(params: {
     
     if (json.code !== 1 || !json.data) {
       console.error('Invalid API response format', json);
-      return [];
+      return { stats: [] };
     }
 
-    const { daily_active_users, daily_new_users, daily_revenue } = json.data;
+    const { daily_active_users, daily_new_users, daily_revenue, new_users, total_revenue, avg_dau } = json.data;
     
     // Map to store aggregated data by date
     const statsMap = new Map<string, DailyStats>();
@@ -65,11 +95,9 @@ export async function fetchStats(params: {
       const dateStr = String(rawDate).trim();
       let formattedDate = dateStr;
       
-      // Handle YYYYMMDD format (e.g. 20260222)
       if (!dateStr.includes('-') && dateStr.length === 8) {
         formattedDate = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
       }
-      // Handle YYYY-M-D format (ensure padding if needed, though usually standard)
       
       if (!statsMap.has(formattedDate)) {
         statsMap.set(formattedDate, {
@@ -109,7 +137,6 @@ export async function fetchStats(params: {
       daily_revenue.forEach(item => {
         if (item.date) {
           const stats = getStats(item.date);
-          // Convert fen to yuan (divide by 100)
           stats.revenue += (item.total || 0) / 100;
         }
       });
@@ -122,17 +149,23 @@ export async function fetchStats(params: {
 
     // Client-side filtering
     if (params.startDate) {
-      // Use string comparison for YYYY-MM-DD to avoid timezone issues
       results = results.filter(s => s.date >= params.startDate!);
     }
     if (params.endDate) {
       results = results.filter(s => s.date <= params.endDate!);
     }
 
-    return results;
+    return {
+      stats: results,
+      summary: {
+        new_users: new_users || 0,
+        total_revenue: total_revenue || 0,
+        avg_dau: avg_dau || 0
+      }
+    };
   } catch (error) {
     console.error('Failed to fetch stats:', error);
-    return [];
+    return { stats: [] };
   }
 }
 
@@ -205,3 +238,37 @@ export async function fetchBasicStats(params: {
     return null;
   }
 }
+
+export interface ChannelItem {
+  channel_id: string;
+  game_id: string;
+  group: string;
+  id: number;
+  name: string;
+}
+
+interface ChannelListApiResponse {
+  code: number;
+  data: ChannelItem[];
+}
+
+export async function get_channel_list(): Promise<ChannelItem[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}admin/channel/list`);
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const json: ChannelListApiResponse = await response.json();
+    if (json.code !== 1 || !json.data) {
+      console.error('Invalid API response format', json);
+      return [];
+    }
+
+    return json.data;
+  } catch (error) {
+    console.error('Failed to fetch channel list:', error);
+    return [];
+  }
+}
+

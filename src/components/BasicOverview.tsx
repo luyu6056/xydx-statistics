@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { fetchBasicStats, type BasicStatsItem, type BasicStatsSummary } from '../lib/api';
+import { cn } from '../lib/utils';
 
 export function BasicOverview() {
   const [stats, setStats] = useState<BasicStatsItem[]>([]);
@@ -11,10 +12,33 @@ export function BasicOverview() {
     start: format(subDays(new Date(), 6), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleRefresh = () => setRefreshTrigger(prev => prev + 1);
+    window.addEventListener('app-refresh', handleRefresh);
+    return () => window.removeEventListener('app-refresh', handleRefresh);
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [refreshTrigger, dateRange]);
+
+  const setRangeType = (type: 'yesterday' | '7days' | '30days') => {
+    const end = new Date();
+    let start = new Date();
+    
+    if (type === 'yesterday') {
+      start = subDays(end, 1);
+      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(start, 'yyyy-MM-dd') });
+    } else if (type === '7days') {
+      start = subDays(end, 6);
+      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') });
+    } else if (type === '30days') {
+      start = subDays(end, 29);
+      setDateRange({ start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') });
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -48,27 +72,69 @@ export function BasicOverview() {
   return (
     <div className="space-y-6">
       {/* Header / Filter */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-neutral-200">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-neutral-700">时间:</span>
-          <div className="flex items-center gap-2">
-            <input 
-              type="date" 
-              value={dateRange.start}
-              onChange={e => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="border border-neutral-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <span className="text-neutral-400">-</span>
-            <input 
-              type="date" 
-              value={dateRange.end}
-              onChange={e => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="border border-neutral-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
+      <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm flex flex-col gap-4">
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-4 items-center">
+            {/* Quick Ranges */}
+            <div className="flex bg-neutral-100 p-1 rounded-lg gap-1">
+              <button 
+                onClick={() => setRangeType('yesterday')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  dateRange.start === dateRange.end && dateRange.end === format(subDays(new Date(), 1), 'yyyy-MM-dd')
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                )}
+              >
+                昨日
+              </button>
+              <button 
+                onClick={() => setRangeType('7days')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  dateRange.start === format(subDays(new Date(), 6), 'yyyy-MM-dd') && dateRange.end === format(new Date(), 'yyyy-MM-dd')
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                )}
+              >
+                近7日
+              </button>
+              <button 
+                onClick={() => setRangeType('30days')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  dateRange.start === format(subDays(new Date(), 29), 'yyyy-MM-dd') && dateRange.end === format(new Date(), 'yyyy-MM-dd')
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                )}
+              >
+                近30日
+              </button>
+            </div>
+
+            {/* Custom Range Display */}
+            <div className="flex items-center gap-2 bg-neutral-50 px-3 py-1.5 rounded-lg border border-neutral-200 shadow-inner">
+              <div className="flex items-center gap-1">
+                <input 
+                  type="date" 
+                  value={dateRange.start}
+                  onChange={e => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="text-xs border-none p-0 focus:ring-0 text-neutral-800 font-semibold bg-transparent w-28 cursor-pointer"
+                />
+                <span className="text-neutral-300 text-xs mx-1">至</span>
+                <input 
+                  type="date" 
+                  value={dateRange.end}
+                  onChange={e => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="text-xs border-none p-0 focus:ring-0 text-neutral-800 font-semibold bg-transparent w-28 cursor-pointer"
+                />
+              </div>
+            </div>
           </div>
+
           <button 
             onClick={loadData}
-            className="bg-neutral-800 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-neutral-700 transition-colors flex items-center gap-2"
+            className="bg-neutral-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-all hover:translate-y-[-1px] shadow-sm flex items-center gap-2"
           >
             <Search size={14} />
             搜索
