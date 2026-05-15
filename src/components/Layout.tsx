@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, BarChart3, Settings, User, RefreshCw, ChevronDown, ChevronRight, PieChart, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, BarChart3, Settings, User, RefreshCw, ChevronDown, ChevronRight, PieChart, Users, Globe, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getApiEnv, setApiEnv, type ApiEnvironment } from '../lib/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -152,6 +153,34 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-6">
           <h2 className="text-lg font-semibold text-neutral-800">{viewTitles[currentView] || 'GameSight'}</h2>
           <div className="flex items-center gap-4">
+            {/* Environment Selector */}
+            <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-lg">
+              <button
+                onClick={() => setApiEnv('standard')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5",
+                  getApiEnv() === 'standard'
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                )}
+              >
+                <Globe size={12} />
+                标准
+              </button>
+              <button
+                onClick={() => setApiEnv('operational')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5",
+                  getApiEnv() === 'operational'
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700"
+                )}
+              >
+                <Activity size={12} />
+                运营
+              </button>
+            </div>
+
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('app-refresh'))}
               className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-full relative transition-colors"

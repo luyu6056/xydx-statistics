@@ -84,7 +84,11 @@ export function Analytics() {
 
       if (data) {
         // Sort by date descending
-        const sorted = data.stats.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const sorted = data.stats.sort((a, b) => {
+          const da = dayjs(a.date).valueOf();
+          const db = dayjs(b.date).valueOf();
+          return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da);
+        });
         
         // Enrich data with mock fields to match the detailed query screenshot
         const enriched: DetailedStatsItem[] = sorted.map(s => {

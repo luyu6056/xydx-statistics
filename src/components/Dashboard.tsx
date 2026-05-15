@@ -80,7 +80,11 @@ export function Dashboard() {
   const summary = statsData?.summary;
 
   // Derived Stats & Trends
-  const sortedStats = [...stats].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sortedStats = [...stats].sort((a, b) => {
+    const da = dayjs(a.date).valueOf();
+    const db = dayjs(b.date).valueOf();
+    return (isNaN(da) ? 0 : da) - (isNaN(db) ? 0 : db);
+  });
   
   // Use API summary if available, fallback to aggregated daily stats
   const totalRevenue = summary ? (summary.total_revenue / 100) : sortedStats.reduce((acc, curr) => acc + curr.revenue, 0);
@@ -105,12 +109,24 @@ export function Dashboard() {
   const dauTrend = getTrend('dau');
   const newUsersTrend = getTrend('new_users');
   
-  const chartData = sortedStats.map(s => ({
-    ...s,
-    dateFormatted: format(parseISO(s.date), 'MMM dd'),
-    retention_1d_pct: (s.retention_1d * 100).toFixed(1),
-    retention_7d_pct: (s.retention_7d * 100).toFixed(1),
-  }));
+  const chartData = sortedStats.map(s => {
+    let dateFormatted = s.date;
+    try {
+      const d = dayjs(s.date);
+      if (d.isValid()) {
+        dateFormatted = d.format('MMM DD');
+      }
+    } catch (e) {
+      console.error('Date formatting error:', e);
+    }
+
+    return {
+      ...s,
+      dateFormatted,
+      retention_1d_pct: (s.retention_1d * 100).toFixed(1),
+      retention_7d_pct: (s.retention_7d * 100).toFixed(1),
+    };
+  });
 
   const exportCSV = () => {
     const headers = ['Date', 'DAU', 'New Users', 'Revenue', 'Ret 1d', 'Ret 7d'];

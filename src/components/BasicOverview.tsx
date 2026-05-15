@@ -66,7 +66,11 @@ export function BasicOverview() {
 
       if (data) {
         // Sort by date descending
-        setStats(data.stats.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setStats(data.stats.sort((a, b) => {
+          const da = dayjs(a.date).valueOf();
+          const db = dayjs(b.date).valueOf();
+          return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da);
+        }));
         setSummary(data.summary);
       } else {
         setStats([]);
