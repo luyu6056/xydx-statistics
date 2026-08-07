@@ -9,6 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, 'game_stats.db');
 const db = new Database(dbPath);
 
+const API_BASE_URL = process.env.API_URI || 'https://statistics.xydx.net/';
+const LAN_RETENTION_BASE = 'http://192.168.1.180:85/';
+
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS daily_stats (
@@ -195,20 +198,36 @@ async function startServer() {
   app.get('/statistics/user_retention', async (req, res) => {
     try {
       const queryString = new URLSearchParams(req.query as any).toString();
-      // Try proxying to remote http://192.168.1.180:85/statistics/user_retention
+      // Try proxying to remote LAN http://192.168.1.180:85/statistics/user_retention first
       try {
-        const remoteUrl = `http://192.168.1.180:85/statistics/user_retention?${queryString}`;
+        const remoteUrl = `${LAN_RETENTION_BASE}statistics/user_retention?${queryString}`;
         console.log('[Server Proxy] Attempting to fetch from:', remoteUrl);
         const remoteResponse = await fetch(remoteUrl, { signal: AbortSignal.timeout(3000) });
         if (remoteResponse.ok) {
           const remoteJson = await remoteResponse.json();
           if (remoteJson && (remoteJson.code === 1 || Array.isArray(remoteJson.data))) {
-            console.log('[Server Proxy] Successfully retrieved remote retention data from http://192.168.1.180:85');
+            console.log(`[Server Proxy] Successfully retrieved remote retention data from ${LAN_RETENTION_BASE}`);
             return res.json(remoteJson);
           }
         }
       } catch (proxyError) {
-        console.log('[Server Proxy] Remote http://192.168.1.180:85 unavailable or timed out, returning local data');
+        console.log(`[Server Proxy] Remote ${LAN_RETENTION_BASE} unavailable or timed out`);
+      }
+
+      // Fall back to the public statistics API before synthesizing local data
+      try {
+        const publicUrl = `${API_BASE_URL}statistics/user_retention?${queryString}`;
+        console.log('[Server Proxy] Attempting to fetch from:', publicUrl);
+        const publicResponse = await fetch(publicUrl, { signal: AbortSignal.timeout(5000) });
+        if (publicResponse.ok) {
+          const publicJson = await publicResponse.json();
+          if (publicJson && (publicJson.code === 1 || Array.isArray(publicJson.data))) {
+            console.log(`[Server Proxy] Successfully retrieved retention data from ${API_BASE_URL}`);
+            return res.json(publicJson);
+          }
+        }
+      } catch (publicError) {
+        console.log(`[Server Proxy] Public API ${API_BASE_URL} unavailable, returning local data`);
       }
 
       const { begin_date, end_date, channel, group, server } = req.query;

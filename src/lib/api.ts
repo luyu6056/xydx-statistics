@@ -585,13 +585,19 @@ export async function fetchRetentionStats(params: {
       queryParams.append('server_id', params.servers[0]);
     }
 
-    // Attempt requests across all target base endpoints including http://192.168.1.180:85/ and relative /
-    const targetBases = [
-      'http://192.168.1.180:85/',
-      '/',
+    // Attempt requests across all target base endpoints.
+    // Prefer the authoritative API source first: for a specific channel group this is the
+    // source mapped in groupSourceMap, otherwise the active environment's API. The internal
+    // LAN endpoint (http://192.168.1.180:85/) and the local proxy are only fallbacks, since
+    // they may report retention keys/values that are inconsistent with the authoritative API.
+    const preferredBase = isAll ? getBaseUrl() : getBaseUrlForParams(params.channels);
+    const targetBases = Array.from(new Set([
+      preferredBase,
       API_BASE_URL,
-      API_BASE_URL_OP
-    ];
+      API_BASE_URL_OP,
+      'http://192.168.1.180:85/',
+      '/'
+    ]));
 
     console.log('[Retention] Dispatching requests to hosts:', targetBases);
 

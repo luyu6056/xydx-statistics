@@ -220,9 +220,9 @@ export function Analytics() {
                 onChange={e => setServer(e.target.value)}
                 className="border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[100px] bg-white shadow-sm"
               >
-                <option value="全部">全部</option>
-                <option value="S1">S1</option>
-                <option value="S2">S2</option>
+                {meta.servers.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
               </select>
             </div>
 
@@ -233,9 +233,9 @@ export function Analytics() {
                 onChange={e => setChannel(e.target.value)}
                 className="border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[100px] bg-white shadow-sm"
               >
-                <option value="全部">全部</option>
-                <option value="AppStore">AppStore</option>
-                <option value="GooglePlay">GooglePlay</option>
+                {meta.channels.map(ch => (
+                  <option key={ch} value={ch}>{ch}</option>
+                ))}
               </select>
             </div>
 
