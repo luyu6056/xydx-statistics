@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { fetchBasicStats, type BasicStatsItem, type BasicStatsSummary } from '../lib/api';
+import { fetchBasicStats, fetchMeta, type BasicStatsItem, type BasicStatsSummary, type MetaData } from '../lib/api';
 import { cn } from '../lib/utils';
 import Datepicker from "react-tailwindcss-datepicker";
 import dayjs from 'dayjs';
@@ -17,6 +17,15 @@ export function BasicOverview() {
     startDate: subDays(new Date(), 6),
     endDate: new Date()
   });
+  
+  // Filters setup
+  const [meta, setMeta] = useState<MetaData>({ channels: [], servers: [] });
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const group = params.get('group');
+    return group && group !== '全部' ? [group] : [];
+  });
+  const [selectedServers, setSelectedServers] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -26,8 +35,23 @@ export function BasicOverview() {
   }, []);
 
   useEffect(() => {
+    fetchMeta().then(setMeta);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedChannels.length > 0) {
+      params.set('group', selectedChannels[0]);
+    } else {
+      params.delete('group');
+    }
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [selectedChannels]);
+
+  useEffect(() => {
     loadData();
-  }, [refreshTrigger, dateRange]);
+  }, [refreshTrigger, dateRange, selectedChannels, selectedServers]);
 
   const setRangeType = (type: 'yesterday' | '7days' | '30days') => {
     const end = new Date();
@@ -61,7 +85,8 @@ export function BasicOverview() {
     try {
       const data = await fetchBasicStats({
         startDate: formatRangeDate(dateRange.startDate),
-        endDate: formatRangeDate(dateRange.endDate)
+        endDate: formatRangeDate(dateRange.endDate),
+        channels: selectedChannels
       });
 
       if (data) {
@@ -160,13 +185,52 @@ export function BasicOverview() {
             </div>
           </div>
 
-          <button 
-            onClick={loadData}
-            className="bg-neutral-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-all hover:translate-y-[-1px] shadow-sm flex items-center gap-2"
-          >
-            <Search size={14} />
-            搜索
-          </button>
+          <div className="flex gap-4 items-center">
+            <div className="flex gap-2 items-center">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">渠道：</span>
+              <select
+                className="text-sm border-neutral-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 h-9 min-w-[140px] bg-white text-neutral-700 shadow-sm border"
+                value={selectedChannels.length === 0 ? '全部' : selectedChannels[0]}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === '全部') {
+                    setSelectedChannels([]);
+                  } else {
+                    setSelectedChannels([val]);
+                  }
+                }}
+              >
+                {meta.channels.map(ch => (
+                  <option key={ch} value={ch}>{ch}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">服务器：</span>
+              <select 
+                multiple
+                className="text-sm border-neutral-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 h-9 min-w-[100px] bg-white shadow-sm border text-neutral-700"
+                value={selectedServers}
+                onChange={e => {
+                  const options = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
+                  setSelectedServers(options);
+                }}
+              >
+                {meta.servers.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <button 
+              onClick={loadData}
+              className="bg-neutral-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-all hover:translate-y-[-1px] shadow-sm flex items-center gap-2"
+            >
+              <Search size={14} />
+              搜索
+            </button>
+          </div>
         </div>
       </div>
 

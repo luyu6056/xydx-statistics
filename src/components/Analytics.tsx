@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { fetchBasicStats, type BasicStatsItem } from '../lib/api';
+import { fetchBasicStats, fetchMeta, type BasicStatsItem, type MetaData } from '../lib/api';
 import { cn } from '../lib/utils';
 import Datepicker from "react-tailwindcss-datepicker";
 import dayjs from 'dayjs';
@@ -26,6 +26,7 @@ interface DetailedStatsItem extends BasicStatsItem {
 export function Analytics() {
   const [stats, setStats] = useState<DetailedStatsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<MetaData>({ channels: ['全部'], channelGroups: ['全部'], servers: ['全部'] });
   
   // Filters
   const [dateRange, setDateRange] = useState({
@@ -36,6 +37,10 @@ export function Analytics() {
   const [channel, setChannel] = useState('全部');
   const [channelGroup, setChannelGroup] = useState('全部');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    fetchMeta().then(setMeta);
+  }, []);
 
   useEffect(() => {
     const handleRefresh = () => setRefreshTrigger(prev => prev + 1);

@@ -378,7 +378,7 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {sortedStats.map((row) => (
+                  {[...sortedStats].reverse().map((row) => (
                     <tr key={row.date} className="hover:bg-neutral-50 transition-colors">
                       <td className="px-6 py-3 font-medium text-neutral-900">{row.date}</td>
                       <td className="px-6 py-3">{row.dau.toLocaleString()}</td>

@@ -5,6 +5,8 @@ import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
 import { Placeholder } from './components/Placeholder';
 import { BasicOverview } from './components/BasicOverview';
+import { Retention } from './components/Retention';
+import { Ltv } from './components/Ltv';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -14,9 +16,10 @@ export default function App() {
       {currentView === 'dashboard' && <Dashboard />}
       {currentView === 'basic_overview' && <BasicOverview />}
       {currentView === 'analytics' && <Analytics />}
-      {currentView === 'ltv' && <Placeholder title="LTV查询" />}
-      {currentView === 'retention' && <Placeholder title="账户留存" />}
+      {currentView === 'ltv' && <Ltv />}
+      {currentView === 'retention' && <Retention />}
       {currentView === 'settings' && <Settings />}
     </Layout>
   );
 }
+
