@@ -585,41 +585,36 @@ export async function fetchRetentionStats(params: {
       queryParams.append('server_id', params.servers[0]);
     }
 
-    // Attempt requests across all target base endpoints.
-    // Prefer the authoritative API source first: for a specific channel group this is the
-    // source mapped in groupSourceMap, otherwise the active environment's API. The internal
-    // LAN endpoint (http://192.168.1.180:85/) and the local proxy are only fallbacks, since
-    // they may report retention keys/values that are inconsistent with the authoritative API.
-    const preferredBase = isAll ? getBaseUrl() : getBaseUrlForParams(params.channels);
-    const targetBases = Array.from(new Set([
-      preferredBase,
-      API_BASE_URL,
-      API_BASE_URL_OP,
-      'http://192.168.1.180:85/',
-      '/'
-    ]));
+    const isTestEnv = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '192.168.1.180' ||
+      window.location.hostname.includes('192.168.')
+    );
 
-    console.log('[Retention] Dispatching requests to hosts:', targetBases);
+    const primaryBase = isTestEnv
+      ? 'http://192.168.1.180:85/'
+      : (isAll ? getBaseUrl() : getBaseUrlForParams(params.channels));
 
-    const endpointPromises = targetBases.map(base => fetchUserRetentionEndpoint(base, queryParams));
-    const results = await Promise.all(endpointPromises);
+    console.log('[Retention] Querying primary base URL:', primaryBase);
 
-    const validList: RetentionStatsItem[] = [];
-    results.forEach(res => {
+    // Try primary base URL first
+    let res = await fetchUserRetentionEndpoint(primaryBase, queryParams);
+    if (res && res.length > 0) {
+      return res.sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
+    }
+
+    // Fallback: try secondary base URL sequentially only if primary returns no data
+    const fallbackBase = isTestEnv
+      ? (isAll ? getBaseUrl() : getBaseUrlForParams(params.channels))
+      : 'http://192.168.1.180:85/';
+
+    if (fallbackBase !== primaryBase) {
+      console.log('[Retention] Primary returned no data, trying fallback base URL:', fallbackBase);
+      res = await fetchUserRetentionEndpoint(fallbackBase, queryParams);
       if (res && res.length > 0) {
-        validList.push(...res);
+        return res.sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
       }
-    });
-
-    if (validList.length > 0) {
-      const map = new Map<string, RetentionStatsItem>();
-      validList.forEach(item => {
-        const key = `${item.date}_${item.channel}_${item.server}`;
-        if (!map.has(key)) {
-          map.set(key, item);
-        }
-      });
-      return Array.from(map.values()).sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
     }
 
     // Fallback calculation using basic_stats and stats

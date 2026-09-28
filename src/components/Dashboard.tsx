@@ -13,6 +13,8 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 dayjs.extend(localizedFormat);
 
+const USD_CNY_RATE = 6.6;
+
 export function Dashboard() {
   const [statsData, setStatsData] = useState<StatsResponse | null>(null);
   const [meta, setMeta] = useState<MetaData>({ channels: [], servers: [] });
@@ -294,7 +296,7 @@ export function Dashboard() {
         <StatCard 
           title="总收入" 
           value={`￥${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-          subValue={`$${(totalRevenue / 6.81).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          subValue={`$${(totalRevenue / USD_CNY_RATE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           trend={`${revTrend.up ? '+' : '-'}${revTrend.value}%`} 
           trendUp={revTrend.up}
           icon={<DollarSign size={20} className="text-emerald-600" />}
@@ -384,7 +386,7 @@ export function Dashboard() {
                       <td className="px-6 py-3">{row.dau.toLocaleString()}</td>
                       <td className="px-6 py-3">{row.new_users.toLocaleString()}</td>
                       <td className="px-6 py-3 text-emerald-600 font-medium">￥{row.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td className="px-6 py-3 text-neutral-500 font-mono text-xs">${(row.revenue / 6.81).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="px-6 py-3 text-neutral-500 font-mono text-xs">${(row.revenue / USD_CNY_RATE).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td className="px-6 py-3">{(row.retention_1d * 100).toFixed(1)}%</td>
                       <td className="px-6 py-3">{(row.retention_7d * 100).toFixed(1)}%</td>
                     </tr>
